@@ -71,6 +71,8 @@ bool Edge::RecomputeDirty(State* state, DiskInterface* disk_interface,
   BuildLog* build_log = state ? state->build_log_ : 0;
   string command = EvaluateCommand();
 
+  bool outputs_dirty = false;
+
   assert(!outputs_.empty());
   for (vector<Node*>::iterator i = outputs_.begin(); i != outputs_.end(); ++i) {
     // We may have other outputs that our input-recursive traversal hasn't hit
@@ -79,8 +81,17 @@ bool Edge::RecomputeDirty(State* state, DiskInterface* disk_interface,
     (*i)->file_->StatIfNecessary(disk_interface);
 
     RecomputeOutputDirty(build_log, most_recent_input, dirty, command, *i);
-    if ((*i)->dirty_)
+    if ((*i)->dirty_) {
+      outputs_dirty = true;
       outputs_ready_ = false;
+    }
+  }
+
+  if (!dirty && outputs_dirty) {
+    // if any output is dirty, mark all outputs as dirty
+    for (vector<Node*>::iterator i = outputs_.begin(); i != outputs_.end(); ++i) {
+      (*i)->dirty_ = true;
+    }
   }
 
   return true;
